@@ -1,18 +1,10 @@
+#! /usr/bin/python
+
+# Author: Haozhe Xu<haozhexu@usc.edu>
+# Date: Sept 17, 2015
+
 from __future__ import division
 import sys
-from math import *
-
-# Should be 'new_gene.counts'
-new_gene_counts = sys.argv[1]
-
-# Should be 'rare_words.txt'
-rare_words_file = sys.argv[2]
-
-# Should be 'gene.dev'
-unlabled_dev_file = sys.argv[3]
-
-# Should be 'gene_dev.p1.out'
-labled_dev_file = sys.argv[4]
 
 def check_argv():
     """Checks the script arguments passed in"""
@@ -20,8 +12,8 @@ def check_argv():
         print 'Asshole , you should at least pass in two arguments'
         print '''Command should be this:
         python unigram.py new_gene.counts rare_words.txt gene.dev gene_dev.p1.out'''
-    else:
-        pass
+        sys.exit(1)
+
 
 class Hmm(object):
     # word dicitonary that hold count(y -> x) counts key is TAG WORD
@@ -114,7 +106,6 @@ class UnigramDecoder(object):
         try:
             with open(self.test_data_file, 'r') as f:
                 with open(self.output_file, 'w') as w:
-                    sentences = []
                     for line in f:
                         line = line.strip()
                         if line:
@@ -139,9 +130,16 @@ class UnigramDecoder(object):
 
 if __name__ == '__main__':
     check_argv()
+    # Should be 'new_gene.counts'
+    new_gene_counts = sys.argv[1]
+    # Should be 'rare_words.txt'
+    rare_words_file = sys.argv[2]
+    # Should be 'gene.dev'
+    unlabled_dev_file = sys.argv[3]
+    # Should be 'gene_dev.p1.out'
+    labled_dev_file = sys.argv[4]
     hmm = Hmm(new_gene_counts)
     hmm.process_train()
     hmm.populate_rare_words(rare_words_file)
     decoder = UnigramDecoder(hmm, unlabled_dev_file, labled_dev_file)
     decoder.write()
-

@@ -1,3 +1,6 @@
+#! /usr/bin/python
+# Author: Haozhe Xu<haozhexu@usc.edu>
+# Date: Sept 16, 2015
 import sys
 
 """
@@ -5,25 +8,14 @@ This file take in the original gene.train that my have some low frequent words.
 The purpose of this file is to find out the word whose frequency is less than 5
 and replace them in the original gene.train with RARE then ran counts_freq.py again
 """
-# Original gene.counts file, should be 'gene.counts'
-gene_counts = sys.argv[1]
-
-# Original gene.train file, should be 'gene.train'
-gene_train = sys.argv[2]
-
-# New output new_gene.train file should be 'new_gene.train'
-new_gene_train = sys.argv[3]
-
-# File where we what to store all the identified rare words
-rare_words = sys.argv[4]
 
 def check_argv():
     if len(sys.argv) != 5:
         print 'Hey man, you need to pass in four arguments!!!!!!!!'
         print 'please format your argument in the following way: \
         python update_train_data.py gene.counts gene.train new_gene.train rare_words.txt'
-    else:
-        pass
+        sys.exit(1)
+
 
 class Counts(object):
 
@@ -88,6 +80,14 @@ class Counts(object):
 if __name__ == '__main__':
     # Checks the argument of the program
     check_argv()
+    # Original gene.counts file, should be 'gene.counts'
+    gene_counts = sys.argv[1]
+    # Original gene.train file, should be 'gene.train'
+    gene_train = sys.argv[2]
+    # New output new_gene.train file should be 'new_gene.train'
+    new_gene_train = sys.argv[3]
+    # File where we what to store all the identified rare words
+    rare_words = sys.argv[4]
     # Creates the helper object which is an instance of the Counts
     obj = Counts(gene_counts, gene_train, new_gene_train, rare_words)
     obj.calculate_freq()

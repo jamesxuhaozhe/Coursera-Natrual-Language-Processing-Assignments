@@ -85,6 +85,11 @@ class Hmm(object):
         new_word = self.replace_word(word)
         return self.word.get((tag, new_word), 0.0) / self.ngrams[1][tag]
 
+    def get_trigram_prob(self, trigram):
+        '''Calculate the trigram_pro'''
+        bigram = trigram[: -1]
+        return self.ngrams[3].get(trigram, 0.0) / self.ngrams[2][bigram]
+
     def replace_word(self, word):
         """Word replacement, if a word belongs to rare_words or unseen, should
         be replaced with _RARE_"""
@@ -96,6 +101,8 @@ class Hmm(object):
             return word
 
 class UnigramDecoder(object):
+    '''Helper class that generates the tag and write it out to the target file
+    using unigram emission'''
     def __init__(self, hmm, test_data_file, output_file):
         self.hmm = hmm
         self.test_data_file = test_data_file
@@ -119,13 +126,59 @@ class UnigramDecoder(object):
 
     def get_exp_tag(self, x):
         all_tags = self.hmm.get_tags()
-        return self.argmax([(y, self.e(x, y)) for y in all_tags])
+        return self.argmax([(y, self.e(x, y)) for y in all_tags])[0]
 
     def e(self, x, y):
         return self.hmm.get_emmision(x, y)
 
     def argmax(self, ls):
-        return max(ls, key = lambda item : item[1])[0]
+        return max(ls, key = lambda item : item[1])
+
+class TrigramDecoder(UnigramDecoder):
+    '''Helper class that generate the tag and write it out to the target file
+    using trigram prob'''
+    def write(self):
+        pass
+
+    def viterbi(self, sentence):
+        n = len(sentence)
+
+        def S(k):
+            '''Returns all the possible tags at the position k'''
+            if k in [-1, 0]:
+                return ['*']
+            return self.hmm.get_tags()
+
+        def e(x, y):
+            '''Return the emmision'''
+            return self.hmm.get_emmision(x, y)
+
+        def q(w, u, v):
+            '''Return the trigram prob of the tag seq u, v, w'''
+            return self.hmm.get_trigram_prob(u, v, w)
+
+        # Such that x[1] is the first word
+        x = [''] + sentence
+        y = [''] * (n + 1)
+
+        pi = {}
+        pi[0, '*', '*'] = 1.0
+        bp = {}
+
+        for k in range(1, n + 1):
+            for u in S(k - 1):
+                for v in S(k):
+                    bp[k, u, v], pi[k, u, v] = self.argmax(\
+                    [(w, pi[k - 1, w, u] * q(v, w, u) * e(x[k], v)) for w in S(k - 2)])
+
+        (y[n - 1], y[n]), score = self.argmax([((u, v), pi[n, u, v] * q('STOP', u, v)) for u in S(n - 1) for v in S(n)])
+
+        for k in range(n - 2, 0, -1):
+            y[k] = bp[k + 2, y[k + 1], y[k + 2]]
+        y[0] = '*'
+        scores= [pi[i, y[i - 1], y[i]] for i in range(1, n)]
+
+        return y[1: n + 1], scores + [score]
 
 
 if __name__ == '__main__':
@@ -134,9 +187,9 @@ if __name__ == '__main__':
     new_gene_counts = sys.argv[1]
     # Should be 'rare_words.txt'
     rare_words_file = sys.argv[2]
-    # Should be 'gene.dev'
+    # Should be 'gene.dev' or 'gene.test'
     unlabled_dev_file = sys.argv[3]
-    # Should be 'gene_dev.p1.out'
+    # Should be 'gene_dev.p1.out' or 'gene_test.p2.out'
     labled_dev_file = sys.argv[4]
     hmm = Hmm(new_gene_counts)
     hmm.process_train()

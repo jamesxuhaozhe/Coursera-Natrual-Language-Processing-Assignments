@@ -8,10 +8,11 @@ import sys
 
 def check_argv():
     """Checks the script arguments passed in"""
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         print 'Asshole , you should at least pass in two arguments'
         print '''Command should be this:
-        python unigram.py new_gene.counts rare_words.txt gene.dev gene_dev.p1.out'''
+        python unigram.py new_gene.counts rare_words.txt gene.dev gene_dev.p1.out part1
+        or python unigram.py new_gene.counts rare_words.txt gene.dev gene_dev.p2.out part2'''
         sys.exit(1)
 
 
@@ -138,11 +139,28 @@ class TrigramDecoder(UnigramDecoder):
     '''Helper class that generate the tag and write it out to the target file
     using trigram prob'''
     def write(self):
-        pass
+        try:
+            with open(self.test_data_file, 'r') as f:
+                with open(self.output_file, 'w') as w:
+                    for sentence in self.read_sentences(f):
+                        taggings, scores = self.viterbi(sentence)
+                        w.write('\n'.join([s + ' ' + t for s, t in zip(sentence, taggings)]) + '\n\n')
+        except IOError:
+            print 'IOError: Something is wrong!!!'
+
+    def read_sentences(self, file_handle):
+        '''Creates the sentence generator'''
+        sentences = []
+        for line in file_handle:
+            if line.strip():
+                sentences.append(line.strip())
+            else:
+                yield sentences
+                sentences = []
 
     def viterbi(self, sentence):
+        '''Implementation of Viterbi algorithm'''
         n = len(sentence)
-
         def S(k):
             '''Returns all the possible tags at the position k'''
             if k in [-1, 0]:
@@ -155,7 +173,7 @@ class TrigramDecoder(UnigramDecoder):
 
         def q(w, u, v):
             '''Return the trigram prob of the tag seq u, v, w'''
-            return self.hmm.get_trigram_prob(u, v, w)
+            return self.hmm.get_trigram_prob((u, v, w))
 
         # Such that x[1] is the first word
         x = [''] + sentence
@@ -191,8 +209,16 @@ if __name__ == '__main__':
     unlabled_dev_file = sys.argv[3]
     # Should be 'gene_dev.p1.out' or 'gene_test.p2.out'
     labled_dev_file = sys.argv[4]
+    # Which mode part1 or part2
+    mode = sys.argv[5]
     hmm = Hmm(new_gene_counts)
     hmm.process_train()
     hmm.populate_rare_words(rare_words_file)
-    decoder = UnigramDecoder(hmm, unlabled_dev_file, labled_dev_file)
-    decoder.write()
+    if mode == 'part1':
+        decoder = UnigramDecoder(hmm, unlabled_dev_file, labled_dev_file)
+        decoder.write()
+    elif mode == 'part2':
+        decoder = TrigramDecoder(hmm, unlabled_dev_file, labled_dev_file)
+        decoder.write()
+    else:
+        sys.exit(1)
